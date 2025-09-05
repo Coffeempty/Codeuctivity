@@ -58,14 +58,44 @@
 5. **Inference**  
    - `.summarize(code)` → docstring output using `model.generate(...)`.  
 
+   **Example:**
+   ```python
+   def summarize(code):
+       inputs = tokenizer(f"summarize: {code}", return_tensors="pt", truncation=True).to(model.device)
+       output = model.generate(**inputs, max_length=MAX_OUTPUT)
+       return tokenizer.decode(output[0], skip_special_tokens=True)
+
+   print("\n Test prediction:")
+   print(summarize("def factorial(n): return 1 if n==0 else n*factorial(n-1)"))
+   ```
+
+   **Output:**
+   ```
+   Test prediction:
+   This function calculates the factorial of a number using recursion. If n is 0, it returns 1, otherwise it multiplies n by the factorial of (n-1).
+   ```
+
 ---
 
 ## Training & Evaluation
 
-- **Training Loss**: ~0.0137  
-- **Validation Loss**: ~0.0654  
+We conducted two key runs:
 
-📊 Full logs & charts on Weights & Biases: [View Dashboard](<YOUR-WANDB-LINK-HERE>)  
+1. **Trial Run (500 steps)**  
+   - Purpose: Sanity check, pipeline validation.  
+   - Results: Quick convergence, indicative of learning capacity.  
+
+   📈 ![alt text](assets/trial_run.png)
+
+2. **Full Run (10,000 steps)**  
+   - Purpose: Main training, improved generalization.  
+   - Results: Lower validation loss, stronger summaries.  
+
+   📉 ![alt text](assets/main_run.png)
+- **Final Metrics**  
+  - Training Loss: ~0.0137  
+  - Validation Loss: ~0.0654  
+  
 
 ---
 
@@ -77,3 +107,12 @@ Clone the repo and run:
 git clone <repo-url>
 cd codeuctivity
 pip install -r requirements.txt  # includes transformers, peft, datasets, wandb, etc.
+```
+
+---
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+
+---
