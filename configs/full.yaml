@@ -1,0 +1,23 @@
+# Full config: 10000 steps (replicates original training run)
+model:
+  base_model: "Salesforce/codet5-base"
+  output_dir: "outputs/codet5-lora"
+
+lora:
+  r: 16
+  lora_alpha: 32
+  lora_dropout: 0.1
+
+data:
+  subset: "python"
+  train_samples: 40000
+  eval_samples: 1000
+  max_input_len: 128
+  max_output_len: 64
+
+training:
+  batch_size: 4
+  learning_rate: 5e-4
+  num_train_epochs: 1
+  max_steps: -1
+  logging_steps: 50
