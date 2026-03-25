@@ -1,118 +1,126 @@
-# Codeuctivity – Smarter Code Summaries via LoRA-fine-tuned CodeT5
+# Codeuctivity
 
-[![Python](https://img.shields.io/badge/python-3.11-blue)](https://www.python.org/)
-[![HuggingFace](https://img.shields.io/badge/HuggingFace-🤗-orange)](https://huggingface.co/)
-[![Weights & Biases](https://img.shields.io/badge/W%26B-Logging-blueviolet)](https://wandb.ai)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Contributions Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen)]()
+LoRA fine-tuned [Salesforce/codet5-base](https://huggingface.co/Salesforce/codet5-base) for automatic Python code summarization. The model takes a function's source code and generates a natural language docstring. It trains only 0.787% of parameters (1.77M of 224M) using [LoRA adapters](https://arxiv.org/abs/2106.09685), making fine-tuning feasible on a single GPU.
 
----
-
-## Overview
-
-**Codeuctivity** is an efficient, transformer-powered summarization tool that helps developers understand their code better by converting functions into natural-language explanations. Behind the scenes, we fine-tune Salesforce’s open-source `CodeT5` model using **LoRA**, enabling lightweight, high-performance adaptation for code-to-docstring generation.
-
----
-
-## Why It Matters
-
-- **Boost developer productivity**: Auto-generate meaningful summaries to ease onboarding and documentation.  
-- **Efficient fine-tuning**: By freezing most of the model and applying LoRA adapters, only ~0.8% of parameters are actually trained — fast and resource-friendly.  
-- **Modern foundation**: Built on the powerful CodeT5 model, which sets SOTA benchmarks in code understanding and generation tasks.  
-
-📖 Original CodeT5 Paper: *CodeT5: Identifier-aware Unified Pre-trained Encoder-Decoder Models for Code Understanding and Generation*, Wang et al., EMNLP 2021.  
-[Read on arXiv](https://arxiv.org/abs/2109.00859)
-
----
-
-## Features
-
-- Fine-tuned `Salesforce/codeT5-base` with LoRA adapter (r=16, α=32, dropout=0.1).  
-- Trained on the `code_x_glue_ct_code_to_text` (Python subset) dataset for code-to-docstring summarization.  
-- Trainer pipeline using HuggingFace `Trainer` API with logging to Weights & Biases.  
-- Lightweight inference helper: `.summarize(code)` returns a human-readable summary.  
-
----
-
-## Architecture & Workflow
-
-1. **Dataset**  
-   - HuggingFace dataset: `code_x_glue_ct_code_to_text` (Python).  
-   - Splits: Training ~251K, Validation ~13K, Test ~15K.  
-
-2. **Tokenization & Preprocessing**  
-   - Prompt format: `"summarize: {code}"`  
-   - Max input length: 128  
-   - Max output length: 64  
-
-3. **Model & LoRA Configuration**  
-   - Base model: `Salesforce/codet5-base`  
-   - LoRA adapters train only ~0.787% of parameters.  
-
-4. **Training Setup**  
-   - Batch size: 4  
-   - Learning rate: 5e-4  
-   - Epochs: 1 (pilot run)  
-   - Logging/Evaluation: per-epoch with W&B tracking  
-
-5. **Inference**  
-   - `.summarize(code)` → docstring output using `model.generate(...)`.  
-
-   **Example:**
-   ```python
-   def summarize(code):
-       inputs = tokenizer(f"summarize: {code}", return_tensors="pt", truncation=True).to(model.device)
-       output = model.generate(**inputs, max_length=MAX_OUTPUT)
-       return tokenizer.decode(output[0], skip_special_tokens=True)
-
-   print("\n Test prediction:")
-   print(summarize("def factorial(n): return 1 if n==0 else n*factorial(n-1)"))
-   ```
-
-   **Output:**
-   ```
-   Test prediction:
-   This function calculates the factorial of a number using recursion. If n is 0, it returns 1, otherwise it multiplies n by the factorial of (n-1).
-   ```
-
----
-
-## Training & Evaluation
-
-We conducted two key runs:
-
-1. **Trial Run (500 steps)**  
-   - Purpose: Sanity check, pipeline validation.  
-   - Results: Quick convergence, indicative of learning capacity.  
-
-   📈 ![alt text](assets/trial_run.png)
-
-2. **Full Run (10,000 steps)**  
-   - Purpose: Main training, improved generalization.  
-   - Results: Lower validation loss, stronger summaries.  
-
-   📉 ![alt text](assets/main_run.png)
-- **Final Metrics**  
-  - Training Loss: ~0.0137  
-  - Validation Loss: ~0.0654  
-  
-
----
-
-## Quick Start
-
-Clone the repo and run:
+## Setup
 
 ```bash
-git clone <repo-url>
-cd codeuctivity
-pip install -r requirements.txt  # includes transformers, peft, datasets, wandb, etc.
+make setup
 ```
 
----
+Requires Python 3.10+ and [uv](https://github.com/astral-sh/uv).
 
-## License
+Copy `.env.example` to `.env` and fill in your keys:
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+```bash
+cp .env.example .env
+```
 
----
+## Usage
+
+### Quick test (500 steps)
+
+```bash
+make train-trial
+```
+
+### Full training run (replicates original 10,000-step run)
+
+```bash
+make train-full
+```
+
+### Inference
+
+```bash
+make summarize
+# or with a specific snippet:
+python scripts/summarize.py --code "def factorial(n): return 1 if n==0 else n*factorial(n-1)"
+```
+
+### End-to-end pipeline
+
+```bash
+python scripts/run_pipeline.py --config configs/trial.yaml
+```
+
+## Programmatic usage
+
+```python
+from codeuctivity.inference import summarize
+
+print(summarize("def factorial(n): return 1 if n==0 else n*factorial(n-1)"))
+# This function calculates the factorial of a number using recursion.
+```
+
+## Results
+
+### Trial run (500 steps)
+
+![Trial run training curve](assets/trial_run.png)
+
+### Full run (10,000 steps)
+
+![Full run training curve](assets/main_run.png)
+
+| Metric | Value |
+|---|---|
+| Training loss (final) | ~0.0137 |
+| Validation loss | ~0.0654 |
+| Training steps | 10,000 |
+| Runtime | 2,212.6 s (~37 min) |
+| Samples/sec | 18.08 |
+| Steps/sec | 4.52 |
+
+### Inference example
+
+```
+Input:  def factorial(n): return 1 if n==0 else n*factorial(n-1)
+Output: This function calculates the factorial of a number using recursion.
+        If n is 0, it returns 1, otherwise it multiplies n by the factorial of (n-1).
+```
+
+## Project structure
+
+```
+codeuctivity/
+    src/codeuctivity/
+        data/           dataset loading and tokenization
+        model/          LoRA config and model loading
+        training/       HuggingFace Trainer wrapper
+        inference/      Summarizer class and convenience function
+        utils/          YAML config loader
+    scripts/
+        train.py        train from a config file
+        evaluate.py     evaluate on the test split
+        summarize.py    interactive or batch inference
+        run_pipeline.py end-to-end: train + eval + demo
+    configs/
+        trial.yaml      500-step trial run
+        full.yaml       10,000-step full run
+    tests/              unit tests for data and inference
+    docs/               architecture notes
+    assets/             training curve images
+```
+
+## Technical background
+
+**CodeT5** (Wang et al., EMNLP 2021) is an encoder-decoder Transformer pre-trained on code with identifier-aware objectives. It achieves strong performance on code understanding and generation tasks.
+
+- Paper: [CodeT5: Identifier-aware Unified Pre-trained Encoder-Decoder Models for Code Understanding and Generation](https://arxiv.org/abs/2109.00859)
+
+**LoRA** (Hu et al., 2021) reduces trainable parameters by injecting low-rank update matrices into attention layers. For rank r=16 and scaling alpha=32, only 1.77M of 224M parameters are trained.
+
+- Paper: [LoRA: Low-Rank Adaptation of Large Language Models](https://arxiv.org/abs/2106.09685)
+
+### Model stats
+
+| Parameter | Value |
+|---|---|
+| Base model | Salesforce/codet5-base |
+| Total parameters | 224,651,520 |
+| Trainable (LoRA) | 1,769,472 |
+| Trainable % | 0.787% |
+| LoRA rank (r) | 16 |
+| LoRA alpha | 32 |
+| LoRA dropout | 0.1 |
