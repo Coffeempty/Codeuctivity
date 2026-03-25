@@ -205,3 +205,11 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# ML model outputs and weights
+wandb/
+outputs/
+checkpoints/
+*.bin
+*.safetensors
+model_weights/
